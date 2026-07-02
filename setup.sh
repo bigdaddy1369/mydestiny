@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# My Destiny - setup script (OPTIMIZED FOR SPEED)
+# My Destiny - setup script (FIXED)
 # ---------------------------------------------------------------------------
 
 mkdir -p ~/MyDestiny
@@ -96,7 +96,7 @@ import datetime
 
 APP_NAME = "My Destiny"
 DB_PATH = "data/mydestiny.db"
-OLLAMA_URL = "http://localhost:11434/api/chat"
+OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL = "mistral:latest"
 HISTORY_TURNS = 5
 
@@ -431,18 +431,14 @@ h3 {
   margin-top: 10px;
   font-style: italic;
 }
-.loading {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #667eea;
-  margin-left: 5px;
-  animation: loading 1s infinite;
-}
-@keyframes loading {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 1; }
+.error-box {
+  background: #ffe8e8;
+  border: 2px solid #e74c3c;
+  border-radius: 8px;
+  padding: 15px;
+  color: #c0392b;
+  margin: 10px 0;
+  font-size: 13px;
 }
 ::-webkit-scrollbar {
   width: 8px;
@@ -497,6 +493,8 @@ h3 {
             <span class="mood-text" id="mood-text">ready</span>
           </div>
         </div>
+
+        <div id="error-box" style="display:none;" class="error-box"></div>
 
         <div class="panel">
           <h3>Start Chatting</h3>
@@ -556,6 +554,13 @@ function updateBubble(text) {
   document.getElementById('bubble').innerText = text;
 }
 
+function showError(msg) {
+  const box = document.getElementById('error-box');
+  box.innerText = '❌ ' + msg;
+  box.style.display = 'block';
+  setTimeout(() => { box.style.display = 'none'; }, 5000);
+}
+
 function setMood(mood) {
   const avatar = document.getElementById('avatar');
   const moodDot = document.getElementById('mood-dot');
@@ -598,6 +603,10 @@ async function chat() {
       body: JSON.stringify({ message: msg })
     });
     
+    if (!response.ok) {
+      throw new Error('HTTP ' + response.status);
+    }
+    
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let fullText = '';
@@ -615,7 +624,8 @@ async function chat() {
     setTimeout(() => setMood('idle'), 1500);
   } catch (e) {
     setMood('error');
-    updateBubble('Connection error. Is Ollama running?');
+    updateBubble('Oops! Connection error.');
+    showError('Make sure Ollama is running. Restart with: cd ~/MyDestiny && ./launcher.sh');
   }
 }
 
@@ -787,23 +797,22 @@ def get_recent_history(limit=HISTORY_TURNS):
     rows = cur.fetchall()
     con.close()
     rows.reverse()
-    messages = []
+    text_parts = []
     for user_message, ai_reply in rows:
-        messages.append({"role": "user", "content": user_message})
-        messages.append({"role": "assistant", "content": ai_reply})
-    return messages
+        text_parts.append(f"User: {user_message}\nAssistant: {ai_reply}\n")
+    return "".join(text_parts)
 
 def ask_ai_stream(message):
     history = get_recent_history()
+    prompt = f"{history}User: {message}\nAssistant:"
+    
     payload = {
         "model": MODEL,
         "stream": True,
-        "messages": [
-            {"role": "system", "content": "You are a helpful AI assistant. Be brief and conversational."},
-            *history,
-            {"role": "user", "content": message}
-        ]
+        "prompt": prompt,
+        "temperature": 0.7
     }
+    
     try:
         with requests.post(OLLAMA_URL, json=payload, stream=True, timeout=120) as r:
             r.raise_for_status()
@@ -814,32 +823,32 @@ def ask_ai_stream(message):
                     data = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                chunk = data.get("message", {}).get("content", "")
+                chunk = data.get("response", "")
                 if chunk:
                     yield chunk
                 if data.get("done"):
                     break
     except Exception as e:
-        yield "Connection error. Make sure Ollama is running."
+        yield f"Error: {str(e)}"
 
 def ask_ai(message):
     history = get_recent_history()
+    prompt = f"{history}User: {message}\nAssistant:"
+    
     payload = {
         "model": MODEL,
         "stream": False,
-        "messages": [
-            {"role": "system", "content": "You are a helpful AI assistant. Be brief and conversational."},
-            *history,
-            {"role": "user", "content": message}
-        ]
+        "prompt": prompt,
+        "temperature": 0.7
     }
+    
     try:
         r = requests.post(OLLAMA_URL, json=payload, timeout=120)
         r.raise_for_status()
         data = r.json()
-        return data.get("message", {}).get("content", "Not sure how to respond.")
+        return data.get("response", "I'm not sure how to respond.")
     except Exception as e:
-        return "Connection error. Is Ollama running?"
+        return f"Error: {str(e)}"
 
 def safe_filename(title):
     title = (title or "Untitled").strip() or "Untitled"
@@ -881,7 +890,7 @@ def api_memory():
     cur.execute("SELECT user_message, ai_reply FROM conversations ORDER BY id DESC LIMIT 10")
     rows = cur.fetchall()
     con.close()
-    memory = [f"You: {u}\\n\\nMe: {a}" for u, a in rows]
+    memory = [f"You: {u}\n\nMe: {a}" for u, a in rows]
     return jsonify({"memory": memory})
 
 @app.route("/api/memory/clear", methods=["POST"])
@@ -909,7 +918,7 @@ def api_book_save():
     con.commit()
     con.close()
     with open(f"books/{safe_filename(title)}.txt", "a", encoding="utf-8") as f:
-        f.write(f"\\n\\n--- Chapter {chapter_number} ---\\n{chapter}")
+        f.write(f"\n\n--- Chapter {chapter_number} ---\n{chapter}")
     return jsonify({"status": "Saved", "chapter_number": chapter_number})
 
 @app.route("/api/book/list")
@@ -956,9 +965,9 @@ def api_book_export():
     con.close()
     if not rows:
         return jsonify({"error": "No chapters"}), 404
-    parts = [f"{title}\\n{'=' * len(title)}\\n"]
+    parts = [f"{title}\n{'=' * len(title)}\n"]
     for chapter_text, chapter_number in rows:
-        parts.append(f"\\n\\n--- Chapter {chapter_number} ---\\n\\n{chapter_text}")
+        parts.append(f"\n\n--- Chapter {chapter_number} ---\n\n{chapter_text}")
     full_text = "".join(parts)
     filename = safe_filename(title) + ".txt"
     return Response(

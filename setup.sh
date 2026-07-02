@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# My Destiny - setup script (FIXED)
+# My Destiny - setup script (OPTIMIZED FOR SPEED)
 # ---------------------------------------------------------------------------
 
 mkdir -p ~/MyDestiny
@@ -20,11 +20,9 @@ elif command -v brew >/dev/null 2>&1; then
   brew install python3 curl
 else
   echo "ERROR: No supported package manager found (apt/dnf/pacman/brew)." >&2
-  echo "Please install python3, python3-venv, pip, and curl manually, then re-run this script." >&2
   exit 1
 fi
 
-# Verify Python 3.8+
 PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
 PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
 PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
@@ -36,7 +34,6 @@ fi
 
 echo "✓ Python $PYTHON_VERSION detected"
 
-# --- Ollama install ----------------------------------------------------------
 if ! command -v ollama >/dev/null 2>&1; then
   echo "Installing Ollama..."
   curl -fsSL https://ollama.com/install.sh | sh
@@ -45,7 +42,6 @@ else
   echo "✓ Ollama already installed"
 fi
 
-# Make sure the Ollama daemon is actually up before we try to pull a model.
 echo "Waiting for Ollama server..."
 MAX_ATTEMPTS=30
 ATTEMPT=0
@@ -53,9 +49,7 @@ ATTEMPT=0
 if ! curl -s --max-time 2 http://localhost:11434/api/tags >/dev/null 2>&1; then
   echo "Starting Ollama server..."
   nohup ollama serve > ollama.log 2>&1 &
-  OLLAMA_PID=$!
   
-  # Wait up to 30s for it to come alive
   while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
     if curl -s --max-time 2 http://localhost:11434/api/tags >/dev/null 2>&1; then
       echo "✓ Ollama server started"
@@ -67,19 +61,16 @@ if ! curl -s --max-time 2 http://localhost:11434/api/tags >/dev/null 2>&1; then
   
   if ! curl -s --max-time 2 http://localhost:11434/api/tags >/dev/null 2>&1; then
     echo "ERROR: Ollama server did not start after 30 seconds." >&2
-    echo "Check ollama.log for details:" >&2
-    tail -20 ollama.log >&2
     exit 1
   fi
 else
   echo "✓ Ollama server already running"
 fi
 
-echo "Pulling llama3.2:1b model (this may take a few minutes)..."
-ollama pull llama3.2:1b
+echo "Pulling mistral:latest (FASTEST model - ~4B params)..."
+ollama pull mistral:latest
 echo "✓ Model ready"
 
-# --- Python environment -------------------------------------------------------
 if [ ! -d ".venv" ]; then
   echo "Creating Python virtual environment..."
   python3 -m venv .venv
@@ -106,8 +97,8 @@ import datetime
 APP_NAME = "My Destiny"
 DB_PATH = "data/mydestiny.db"
 OLLAMA_URL = "http://localhost:11434/api/chat"
-MODEL = "llama3.2:1b"
-HISTORY_TURNS = 10
+MODEL = "mistral:latest"
+HISTORY_TURNS = 5
 
 app = Flask(__name__)
 
@@ -440,6 +431,19 @@ h3 {
   margin-top: 10px;
   font-style: italic;
 }
+.loading {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #667eea;
+  margin-left: 5px;
+  animation: loading 1s infinite;
+}
+@keyframes loading {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -469,11 +473,10 @@ h3 {
   <div class="main">
     <div class="header">
       <h2>Your AI Companion</h2>
-      <p>powered by local LLMs • always on your machine</p>
+      <p>⚡ Running locally • Fast & private • Powered by Mistral</p>
     </div>
 
     <div class="content">
-      <!-- Chat Section -->
       <div id="chat" class="section active">
         <div class="panel">
           <div class="avatar-section">
@@ -486,7 +489,7 @@ h3 {
                 <div class="mouth"></div>
               </div>
             </div>
-            <div class="bubble-text" id="bubble">Hi there! I'm your AI companion. What would you like to talk about?</div>
+            <div class="bubble-text" id="bubble">Hey! I'm ready to chat. What's on your mind?</div>
           </div>
 
           <div class="mood-indicator">
@@ -505,7 +508,6 @@ h3 {
         </div>
       </div>
 
-      <!-- Book Section -->
       <div id="book" class="section">
         <div class="panel">
           <h3>📖 Book Studio</h3>
@@ -528,11 +530,10 @@ h3 {
         </div>
       </div>
 
-      <!-- Memory Section -->
       <div id="memory" class="section">
         <div class="panel">
           <h3>🧠 Conversation Memory</h3>
-          <p style="font-size:13px; color:#666; margin-bottom:15px;">Your last 10 exchanges (auto-loaded)</p>
+          <p style="font-size:13px; color:#666; margin-bottom:15px;">Your recent exchanges</p>
           <div style="display:flex; gap:10px; margin-bottom:15px;">
             <button onclick="loadMemory()">Load Memory</button>
             <button onclick="clearMemory()" style="background:linear-gradient(135deg,#e74c3c,#c0392b);">Clear</button>
@@ -561,7 +562,6 @@ function setMood(mood) {
   const moodText = document.getElementById('mood-text');
   
   avatar.className = 'avatar mood-' + mood;
-  avatar.classList.add('mood-' + mood);
   
   const colors = {
     idle: '#bdc3c7',
@@ -577,7 +577,7 @@ function setMood(mood) {
 
 function greetCompanion() {
   setMood('happy');
-  updateBubble('Hello! I'm here to help with anything you need. 😊');
+  updateBubble('Hello! Ready to help! 😊');
   setTimeout(() => setMood('idle'), 2500);
 }
 
@@ -615,7 +615,7 @@ async function chat() {
     setTimeout(() => setMood('idle'), 1500);
   } catch (e) {
     setMood('error');
-    updateBubble('Oops, something went wrong! :(');
+    updateBubble('Connection error. Is Ollama running?');
   }
 }
 
@@ -678,7 +678,7 @@ async function saveBook() {
   document.getElementById('book-status').innerText = '✓ ' + data.status;
   document.getElementById('chapter-input').value = '';
   setMood('happy');
-  updateBubble('Great work! Saved chapter ' + data.chapter_number);
+  updateBubble('Great! Saved chapter ' + data.chapter_number);
   setTimeout(() => setMood('idle'), 2000);
   loadBookList();
 }
@@ -692,7 +692,7 @@ async function generateChapter() {
   const res = await fetch('/api/chat/stream', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: 'Continue this story chapter: ' + chapter })
+    body: JSON.stringify({ message: 'Continue this story chapter:\n\n' + chapter })
   });
   
   const reader = res.body.getReader();
@@ -799,7 +799,7 @@ def ask_ai_stream(message):
         "model": MODEL,
         "stream": True,
         "messages": [
-            {"role": "system", "content": "You are My Destiny, a helpful AI companion. Be conversational, warm, and helpful."},
+            {"role": "system", "content": "You are a helpful AI assistant. Be brief and conversational."},
             *history,
             {"role": "user", "content": message}
         ]
@@ -820,7 +820,7 @@ def ask_ai_stream(message):
                 if data.get("done"):
                     break
     except Exception as e:
-        yield f"I'm having trouble connecting. Make sure Ollama is running."
+        yield "Connection error. Make sure Ollama is running."
 
 def ask_ai(message):
     history = get_recent_history()
@@ -828,7 +828,7 @@ def ask_ai(message):
         "model": MODEL,
         "stream": False,
         "messages": [
-            {"role": "system", "content": "You are My Destiny, a helpful AI companion. Be conversational, warm, and helpful."},
+            {"role": "system", "content": "You are a helpful AI assistant. Be brief and conversational."},
             *history,
             {"role": "user", "content": message}
         ]
@@ -837,9 +837,9 @@ def ask_ai(message):
         r = requests.post(OLLAMA_URL, json=payload, timeout=120)
         r.raise_for_status()
         data = r.json()
-        return data.get("message", {}).get("content", "I'm not sure how to respond.")
+        return data.get("message", {}).get("content", "Not sure how to respond.")
     except Exception as e:
-        return "Connection issue. Is Ollama running?"
+        return "Connection error. Is Ollama running?"
 
 def safe_filename(title):
     title = (title or "Untitled").strip() or "Untitled"

@@ -107,7 +107,7 @@ APP_NAME = "My Destiny"
 DB_PATH = "data/mydestiny.db"
 OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL = "llama3.2:1b"
-HISTORY_TURNS = 10  # how many past user/AI exchanges to feed back as context
+HISTORY_TURNS = 10
 
 app = Flask(__name__)
 
@@ -115,323 +115,624 @@ HTML = """
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>My Destiny</title>
 <style>
-body { margin:0; background:#12091f; color:white; font-family:Arial; }
-.app { display:flex; height:100vh; }
-.sidebar { width:230px; background:#0b0614; padding:20px; }
-.sidebar h1 { color:#d8b4fe; }
-.sidebar button { width:100%; margin:8px 0; padding:12px; background:#241236; color:white; border:0; cursor:pointer; }
-.main { flex:1; padding:25px; background:linear-gradient(#241236,#12091f); position:relative; }
-.panel { background:#111827; border:2px solid #9333ea; padding:15px; border-radius:12px; margin-bottom:15px; }
-textarea { width:95%; height:120px; padding:10px; font-size:16px; }
-input { padding:10px; font-size:16px; width:70%; }
-button { padding:10px; background:#9333ea; color:white; border:0; cursor:pointer; }
-.avatar { position:absolute; right:80px; bottom:90px; text-align:center; animation: floatBob 3s ease-in-out infinite; }
-.head { width:90px; height:90px; background:#f2b28d; border-radius:50%; margin:auto; position:relative; transition: box-shadow 0.4s ease; }
-.hair { width:100px; height:45px; background:#2b160f; border-radius:50px 50px 0 0; position:absolute; top:-8px; left:-5px; }
-.eye { width:8px; height:8px; background:black; border-radius:50%; position:absolute; top:42px; animation: blinkEye 6s infinite; }
-.left { left:28px; } .right { right:28px; animation-delay: 0.2s; }
-.mouth { position:absolute; bottom:20px; left:34px; width:22px; border-bottom:3px solid red; transition: all 0.25s ease; }
-.body { width:100px; height:150px; background:#111827; margin:auto; border-radius:20px; }
-.desk { position:absolute; right:40px; bottom:25px; width:250px; height:70px; background:#5b3a29; border-radius:10px; text-align:center; line-height:70px; }
-
-@keyframes floatBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-@keyframes blinkEye { 0%, 90%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
-@keyframes talkMouth { 0%, 100% { height:3px; width:22px; } 50% { height:14px; width:16px; } }
-
-.mood-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#9ca3af; margin-left:8px; vertical-align:middle; }
-.mood-label { font-size:12px; opacity:0.7; text-transform:capitalize; }
-
-.avatar.mood-thinking .head { box-shadow: 0 0 16px 5px rgba(251,191,36,0.55); }
-.avatar.mood-talking .head { box-shadow: 0 0 16px 5px rgba(168,85,247,0.55); }
-.avatar.mood-happy .head { box-shadow: 0 0 16px 5px rgba(74,222,128,0.55); }
-.avatar.mood-error .head { box-shadow: 0 0 16px 5px rgba(248,113,113,0.55); }
-.avatar.mood-writing .head { box-shadow: 0 0 16px 5px rgba(96,165,250,0.55); }
-
-.avatar.mood-talking .mouth { animation: talkMouth 0.35s infinite; border-bottom-color:#d8b4fe; }
-.avatar.mood-happy .mouth { width:26px; height:10px; border:none; border-bottom:3px solid #4ade80; border-radius:0 0 14px 14px; }
-.avatar.mood-error .mouth { width:24px; height:10px; border:none; border-bottom:3px solid #f87171; border-radius:0 0 14px 14px; transform: scaleY(-1); }
-.avatar.mood-thinking .mouth { width:10px; height:10px; border:2px solid #fbbf24; border-radius:50%; }
-.avatar.mood-writing .mouth { border-bottom-color:#60a5fa; }
-
-.book-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
-.book-row select { padding:10px; font-size:14px; background:#241236; color:white; border:0; border-radius:4px; }
-#book_preview { max-height:220px; overflow-y:auto; background:#0b0614; padding:10px; border-radius:8px; white-space:pre-wrap; font-size:13px; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  color: #333;
+}
+.container {
+  display: flex;
+  height: 100vh;
+}
+.sidebar {
+  width: 280px;
+  background: rgba(255,255,255,0.95);
+  padding: 30px 20px;
+  box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+  overflow-y: auto;
+  border-right: 3px solid #667eea;
+}
+.sidebar h1 {
+  font-size: 28px;
+  color: #667eea;
+  margin-bottom: 30px;
+  text-align: center;
+  font-weight: 700;
+}
+.sidebar button {
+  width: 100%;
+  padding: 12px 16px;
+  margin: 10px 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+.sidebar button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+.sidebar button:active {
+  transform: translateY(0);
+}
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: white;
+}
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 25px 40px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+.header h2 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.header p {
+  font-size: 12px;
+  opacity: 0.9;
+  margin-top: 5px;
+}
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 30px 40px;
+  display: flex;
+  flex-direction: column;
+}
+.panel {
+  background: #f8f9fb;
+  border-radius: 12px;
+  padding: 25px;
+  margin-bottom: 20px;
+  border: 1px solid #e8ebf0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 15px;
+}
+.message {
+  display: flex;
+  margin: 8px 0;
+  animation: slideIn 0.3s ease;
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.message.user {
+  justify-content: flex-end;
+}
+.message-bubble {
+  max-width: 70%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+.message.user .message-bubble {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 18px 4px 18px 18px;
+}
+.message.ai .message-bubble {
+  background: white;
+  color: #333;
+  border: 2px solid #e8ebf0;
+  border-radius: 4px 18px 18px 18px;
+}
+.input-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+input[type="text"], textarea {
+  flex: 1;
+  padding: 12px 16px;
+  border: 2px solid #e8ebf0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.3s ease;
+}
+input[type="text"]:focus, textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+button {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+button:active {
+  transform: translateY(0);
+}
+.avatar-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.avatar {
+  width: 120px;
+  height: 140px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.face {
+  width: 100px;
+  height: 120px;
+  background: linear-gradient(135deg, #fdbcb4 0%, #f2a679 100%);
+  border-radius: 45px 45px 50px 50px;
+  position: relative;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+.eyes {
+  display: flex;
+  gap: 25px;
+  margin-bottom: 15px;
+}
+.eye {
+  width: 12px;
+  height: 12px;
+  background: #333;
+  border-radius: 50%;
+  position: relative;
+  animation: blink 4s infinite;
+}
+@keyframes blink {
+  0%, 90%, 100% { height: 12px; }
+  95% { height: 2px; }
+}
+.pupil {
+  width: 6px;
+  height: 6px;
+  background: #1a1a1a;
+  border-radius: 50%;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+}
+.mouth {
+  width: 20px;
+  height: 8px;
+  border: 2px solid #e74c3c;
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  position: relative;
+}
+.avatar.mood-happy .mouth {
+  background: #e74c3c;
+  border: none;
+  border-radius: 0 0 8px 8px;
+}
+.avatar.mood-thinking .mouth {
+  width: 6px;
+  height: 6px;
+  border: 2px solid #f39c12;
+  border-radius: 50%;
+}
+.avatar.mood-talking .mouth {
+  animation: talk 0.3s infinite;
+}
+@keyframes talk {
+  0%, 100% { height: 4px; }
+  50% { height: 12px; }
+}
+.mood-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 15px;
+}
+.mood-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #bdc3c7;
+}
+.mood-dot.thinking { background: #f39c12; }
+.mood-dot.talking { background: #667eea; }
+.mood-dot.happy { background: #27ae60; }
+.mood-dot.error { background: #e74c3c; }
+.mood-dot.writing { background: #3498db; }
+.mood-text {
+  font-size: 12px;
+  color: #666;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.bubble-text {
+  font-size: 13px;
+  color: #333;
+  line-height: 1.6;
+  max-width: 200px;
+}
+.book-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+.book-controls select {
+  padding: 10px 14px;
+  border: 2px solid #e8ebf0;
+  border-radius: 8px;
+  font-size: 13px;
+  background: white;
+  cursor: pointer;
+}
+select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+.chapters-list {
+  background: white;
+  border: 1px solid #e8ebf0;
+  border-radius: 8px;
+  padding: 15px;
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #555;
+  font-family: 'Courier New', monospace;
+}
+.section {
+  display: none;
+}
+.section.active {
+  display: block;
+}
+h3 {
+  color: #667eea;
+  font-size: 18px;
+  margin-bottom: 15px;
+  font-weight: 700;
+}
+.status-text {
+  font-size: 12px;
+  color: #666;
+  margin-top: 10px;
+  font-style: italic;
+}
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #667eea;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #764ba2;
+}
 </style>
 </head>
 <body>
-<div class="app">
+<div class="container">
   <div class="sidebar">
     <h1>My Destiny</h1>
-    <button onclick="show('chat')">AI Chat</button>
-    <button onclick="show('book')">Book Studio</button>
-    <button onclick="show('memory')">Memory</button>
-    <button onclick="greet()">Companion</button>
+    <button onclick="switchSection('chat')">💬 Chat</button>
+    <button onclick="switchSection('book')">📖 Write</button>
+    <button onclick="switchSection('memory')">🧠 Memory</button>
+    <button onclick="greetCompanion()">👋 Say Hi</button>
   </div>
 
   <div class="main">
-    <h2>My Destiny Genesis 0.1</h2>
-
-    <div class="panel">
-      <b>Companion:</b>
-      <span class="mood-dot" id="mood_dot"></span><span class="mood-label" id="mood_label">idle</span>
-      <p id="bubble">Hi, I am your My Destiny companion.</p>
+    <div class="header">
+      <h2>Your AI Companion</h2>
+      <p>powered by local LLMs • always on your machine</p>
     </div>
 
-    <div id="chat" class="panel">
-      <h3>AI Chat</h3>
-      <input id="message" placeholder="Talk to My Destiny..." />
-      <button onclick="chat()">Send</button>
-      <p id="reply"></p>
-    </div>
+    <div class="content">
+      <!-- Chat Section -->
+      <div id="chat" class="section active">
+        <div class="panel">
+          <div class="avatar-section">
+            <div class="avatar mood-idle" id="avatar">
+              <div class="face">
+                <div class="eyes">
+                  <div class="eye"><div class="pupil"></div></div>
+                  <div class="eye"><div class="pupil"></div></div>
+                </div>
+                <div class="mouth"></div>
+              </div>
+            </div>
+            <div class="bubble-text" id="bubble">Hi there! I'm your AI companion. What would you like to talk about?</div>
+          </div>
 
-    <div id="book" class="panel" style="display:none;">
-      <h3>Book Studio</h3>
-      <div class="book-row">
-        <select id="book_select" onchange="loadSelectedBook()">
-          <option value="">-- New Book --</option>
-        </select>
-        <button onclick="loadBookList()">Refresh</button>
-        <button onclick="exportBook()">Export .txt</button>
+          <div class="mood-indicator">
+            <div class="mood-dot" id="mood-dot"></div>
+            <span class="mood-text" id="mood-text">ready</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Start Chatting</h3>
+          <div class="chat-container" id="chat-history"></div>
+          <div class="input-group">
+            <input type="text" id="message-input" placeholder="Type your message..." onkeypress="if(event.key==='Enter')chat()">
+            <button onclick="chat()">Send</button>
+          </div>
+        </div>
       </div>
-      <input id="book_title" placeholder="Book title" />
-      <br><br>
-      <textarea id="chapter" placeholder="Write your next chapter here..."></textarea>
-      <br>
-      <button onclick="saveBook()">Save Chapter</button>
-      <button onclick="generateChapter()">AI Continue Chapter</button>
-      <p id="book_status"></p>
-      <h3 style="margin-bottom:6px;">Previous Chapters</h3>
-      <pre id="book_preview">No chapters loaded yet.</pre>
-    </div>
 
-    <div id="memory" class="panel" style="display:none;">
-      <h3>Memory</h3>
-      <p style="opacity:0.7;font-size:14px;">My Destiny automatically recalls your last 10 exchanges in every chat reply.</p>
-      <button onclick="loadMemory()">Load Recent Memory</button>
-      <button onclick="clearMemory()" style="background:#7f1d1d;">Clear Memory</button>
-      <pre id="memory_box"></pre>
-    </div>
-
-    <div class="avatar mood-idle">
-      <div class="head">
-        <div class="hair"></div>
-        <div class="eye left"></div>
-        <div class="eye right"></div>
-        <div class="mouth"></div>
+      <!-- Book Section -->
+      <div id="book" class="section">
+        <div class="panel">
+          <h3>📖 Book Studio</h3>
+          <div class="book-controls">
+            <select id="book-select" onchange="loadSelectedBook()">
+              <option value="">+ New Book</option>
+            </select>
+            <button onclick="loadBookList()">Refresh</button>
+            <button onclick="exportBook()">Export</button>
+          </div>
+          <input type="text" id="book-title" placeholder="Book title...">
+          <textarea id="chapter-input" placeholder="Write your chapter here..."></textarea>
+          <div style="display:flex; gap:10px; margin-top:10px;">
+            <button onclick="saveBook()">Save Chapter</button>
+            <button onclick="generateChapter()">AI Continue</button>
+          </div>
+          <p class="status-text" id="book-status"></p>
+          <h3 style="margin-top:20px;">Previous Chapters</h3>
+          <div class="chapters-list" id="chapters-preview">No chapters yet</div>
+        </div>
       </div>
-      <div class="body"></div>
+
+      <!-- Memory Section -->
+      <div id="memory" class="section">
+        <div class="panel">
+          <h3>🧠 Conversation Memory</h3>
+          <p style="font-size:13px; color:#666; margin-bottom:15px;">Your last 10 exchanges (auto-loaded)</p>
+          <div style="display:flex; gap:10px; margin-bottom:15px;">
+            <button onclick="loadMemory()">Load Memory</button>
+            <button onclick="clearMemory()" style="background:linear-gradient(135deg,#e74c3c,#c0392b);">Clear</button>
+          </div>
+          <div class="chapters-list" id="memory-box">No memory yet</div>
+        </div>
+      </div>
     </div>
-    <div class="desk">Desk</div>
   </div>
 </div>
 
 <script>
-function show(id) {
-  document.getElementById("chat").style.display = "none";
-  document.getElementById("book").style.display = "none";
-  document.getElementById("memory").style.display = "none";
-  document.getElementById(id).style.display = "block";
-  if (id === "book") loadBookList();
+function switchSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'book') loadBookList();
 }
 
-function talk(text) {
-  document.getElementById("bubble").innerText = text;
+function updateBubble(text) {
+  document.getElementById('bubble').innerText = text;
 }
-
-const MOOD_COLORS = {
-  idle: "#9ca3af",
-  thinking: "#fbbf24",
-  talking: "#a855f7",
-  happy: "#4ade80",
-  error: "#f87171",
-  writing: "#60a5fa"
-};
 
 function setMood(mood) {
-  document.querySelector(".avatar").className = "avatar mood-" + mood;
-  document.getElementById("mood_dot").style.background = MOOD_COLORS[mood] || MOOD_COLORS.idle;
-  document.getElementById("mood_label").innerText = mood;
+  const avatar = document.getElementById('avatar');
+  const moodDot = document.getElementById('mood-dot');
+  const moodText = document.getElementById('mood-text');
+  
+  avatar.className = 'avatar mood-' + mood;
+  avatar.classList.add('mood-' + mood);
+  
+  const colors = {
+    idle: '#bdc3c7',
+    thinking: '#f39c12',
+    talking: '#667eea',
+    happy: '#27ae60',
+    error: '#e74c3c',
+    writing: '#3498db'
+  };
+  moodDot.style.background = colors[mood] || colors.idle;
+  moodText.innerText = mood;
 }
 
-function greet() {
-  setMood("happy");
-  talk("Companion mode active. I'm here to help!");
-  setTimeout(() => setMood("idle"), 2500);
-}
-
-async function streamChat(message, onChunk) {
-  let res = await fetch("/api/chat/stream", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({message:message})
-  });
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let fullText = "";
-
-  while (true) {
-    const {done, value} = await reader.read();
-    if (done) break;
-    fullText += decoder.decode(value, {stream:true});
-    onChunk(fullText);
-  }
-  return fullText;
+function greetCompanion() {
+  setMood('happy');
+  updateBubble('Hello! I'm here to help with anything you need. 😊');
+  setTimeout(() => setMood('idle'), 2500);
 }
 
 async function chat() {
-  let msg = document.getElementById("message").value;
-  if (!msg.trim()) return;
-  document.getElementById("message").value = "";
-  document.getElementById("reply").innerText = "";
-  setMood("thinking");
-  talk("Thinking...");
-
-  let started = false;
-  let fullText = await streamChat(msg, (text) => {
-    if (!started) { setMood("talking"); started = true; }
-    talk(text);
-    document.getElementById("reply").innerText = text;
-  });
-
-  if (!fullText) {
-    setMood("error");
-    talk("I could not answer.");
-  } else if (fullText.startsWith("AI error")) {
-    setMood("error");
-  } else {
-    setMood("happy");
-    setTimeout(() => setMood("idle"), 2000);
+  const msg = document.getElementById('message-input').value.trim();
+  if (!msg) return;
+  
+  document.getElementById('message-input').value = '';
+  setMood('thinking');
+  updateBubble('Thinking...');
+  
+  addMessageToChat('user', msg);
+  
+  try {
+    const response = await fetch('/api/chat/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg })
+    });
+    
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    
+    setMood('talking');
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      fullText += decoder.decode(value, { stream: true });
+      updateBubble(fullText);
+    }
+    
+    addMessageToChat('ai', fullText);
+    setMood('happy');
+    setTimeout(() => setMood('idle'), 1500);
+  } catch (e) {
+    setMood('error');
+    updateBubble('Oops, something went wrong! :(');
   }
+}
+
+function addMessageToChat(sender, text) {
+  const container = document.getElementById('chat-history');
+  const msg = document.createElement('div');
+  msg.className = 'message ' + sender;
+  msg.innerHTML = '<div class="message-bubble">' + text + '</div>';
+  container.appendChild(msg);
+  container.scrollTop = container.scrollHeight;
 }
 
 async function loadBookList() {
-  let res = await fetch("/api/book/list");
-  let data = await res.json();
-  let select = document.getElementById("book_select");
-  let current = select.value;
-  select.innerHTML = '<option value="">-- New Book --</option>';
+  const res = await fetch('/api/book/list');
+  const data = await res.json();
+  const select = document.getElementById('book-select');
+  select.innerHTML = '<option value="">+ New Book</option>';
   data.books.forEach(b => {
-    let opt = document.createElement("option");
+    const opt = document.createElement('option');
     opt.value = b.title;
-    opt.textContent = b.title + " (" + b.chapters + " ch.)";
+    opt.textContent = b.title + ' (' + b.chapters + ' chapters)';
     select.appendChild(opt);
   });
-  select.value = current || "";
 }
 
 async function loadSelectedBook() {
-  let title = document.getElementById("book_select").value;
-  document.getElementById("book_title").value = title;
-  document.getElementById("chapter").value = "";
-
+  const title = document.getElementById('book-select').value;
+  document.getElementById('book-title').value = title;
+  document.getElementById('chapter-input').value = '';
+  
   if (!title) {
-    document.getElementById("book_status").innerText = "Starting a new book.";
-    document.getElementById("book_preview").innerText = "No chapters loaded yet.";
+    document.getElementById('book-status').innerText = 'Starting a new book...';
+    document.getElementById('chapters-preview').innerText = 'No chapters yet';
     return;
   }
-
-  let res = await fetch("/api/book/load?title=" + encodeURIComponent(title));
-  let data = await res.json();
-  document.getElementById("book_status").innerText =
-    data.chapters.length + " chapter(s) loaded. Write chapter " + (data.chapters.length + 1) + " below.";
-  document.getElementById("book_preview").innerText = data.chapters.length
-    ? data.chapters.map((c, i) => "--- Chapter " + c.chapter_number + " ---\\n" + c.text).join("\\n\\n")
-    : "No chapters loaded yet.";
+  
+  const res = await fetch('/api/book/load?title=' + encodeURIComponent(title));
+  const data = await res.json();
+  document.getElementById('book-status').innerText = data.chapters.length + ' chapter(s). Ready for chapter ' + (data.chapters.length + 1);
+  document.getElementById('chapters-preview').innerText = data.chapters.length
+    ? data.chapters.map((c, i) => '--- Chapter ' + c.chapter_number + ' ---\\n' + c.text).join('\\n\\n')
+    : 'No chapters yet';
 }
 
 async function saveBook() {
-  let title = document.getElementById("book_title").value.trim();
-  let chapter = document.getElementById("chapter").value;
-
-  if (!title) {
-    document.getElementById("book_status").innerText = "Please enter a book title first.";
+  const title = document.getElementById('book-title').value.trim();
+  const chapter = document.getElementById('chapter-input').value;
+  if (!title || !chapter.trim()) {
+    alert('Please add a title and write something!');
     return;
   }
-  if (!chapter.trim()) {
-    document.getElementById("book_status").innerText = "Write something before saving.";
-    return;
-  }
-
-  let res = await fetch("/api/book/save", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({title:title, chapter:chapter})
+  
+  const res = await fetch('/api/book/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, chapter })
   });
-
-  let data = await res.json();
-  document.getElementById("book_status").innerText = data.status + " (Chapter " + data.chapter_number + ")";
-  document.getElementById("chapter").value = "";
-  setMood("happy");
-  talk('Saved chapter ' + data.chapter_number + ' of "' + title + '."');
-  setTimeout(() => setMood("idle"), 2000);
-
-  await loadBookList();
-  document.getElementById("book_select").value = title;
-  await loadSelectedBook();
+  
+  const data = await res.json();
+  document.getElementById('book-status').innerText = '✓ ' + data.status;
+  document.getElementById('chapter-input').value = '';
+  setMood('happy');
+  updateBubble('Great work! Saved chapter ' + data.chapter_number);
+  setTimeout(() => setMood('idle'), 2000);
+  loadBookList();
 }
 
 async function generateChapter() {
-  let title = document.getElementById("book_title").value.trim();
-  let chapter = document.getElementById("chapter").value;
-  setMood("writing");
-  talk("Writing...");
-
-  let context = "";
-  if (title) {
-    try {
-      let res = await fetch("/api/book/load?title=" + encodeURIComponent(title));
-      let data = await res.json();
-      if (data.chapters && data.chapters.length) {
-        let last = data.chapters[data.chapters.length - 1];
-        context = "For continuity, here is the previous chapter (Chapter " + last.chapter_number + "):\\n" + last.text + "\\n\\n";
-      }
-    } catch (e) {
-      // no previous chapters available, continue without context
-    }
-  }
-
-  let fullText = await streamChat(context + "Continue this new chapter:\\n\\n" + chapter, (text) => {
-    document.getElementById("chapter").value = chapter + "\\n\\n" + text;
+  const title = document.getElementById('book-title').value.trim();
+  const chapter = document.getElementById('chapter-input').value;
+  setMood('writing');
+  updateBubble('Writing your next chapter...');
+  
+  const res = await fetch('/api/chat/stream', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: 'Continue this story chapter: ' + chapter })
   });
-
-  if (fullText && fullText.startsWith("AI error")) {
-    setMood("error");
-    talk("Something went wrong while writing.");
-  } else {
-    setMood("happy");
-    talk("I added more to your chapter.");
-    setTimeout(() => setMood("idle"), 2000);
+  
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let generated = '';
+  
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    generated += decoder.decode(value, { stream: true });
+    document.getElementById('chapter-input').value = chapter + '\\n\\n' + generated;
   }
+  
+  setMood('happy');
+  updateBubble('Done! Check out your expanded chapter.');
+  setTimeout(() => setMood('idle'), 2000);
 }
 
 function exportBook() {
-  let title = document.getElementById("book_title").value.trim();
-  if (!title) {
-    document.getElementById("book_status").innerText = "Select or name a book first.";
-    return;
-  }
-  window.location = "/api/book/export?title=" + encodeURIComponent(title);
+  const title = document.getElementById('book-title').value.trim();
+  if (!title) { alert('Name your book first!'); return; }
+  window.location = '/api/book/export?title=' + encodeURIComponent(title);
 }
 
 async function loadMemory() {
-  let res = await fetch("/api/memory");
-  let data = await res.json();
-  document.getElementById("memory_box").innerText = data.memory.length
-    ? data.memory.join("\\n\\n")
-    : "No memory yet — start chatting.";
+  const res = await fetch('/api/memory');
+  const data = await res.json();
+  document.getElementById('memory-box').innerText = data.memory.length
+    ? data.memory.join('\\n---\\n')
+    : 'No memory yet. Start chatting!';
 }
 
 async function clearMemory() {
-  let res = await fetch("/api/memory/clear", { method: "POST" });
-  let data = await res.json();
-  document.getElementById("memory_box").innerText = "";
-  talk(data.status);
+  if (!confirm('Clear all conversation history?')) return;
+  await fetch('/api/memory/clear', { method: 'POST' });
+  document.getElementById('memory-box').innerText = 'Cleared!';
+  updateBubble('Memory cleared. Fresh start! 🎉');
 }
 
-setMood("idle");
+setMood('idle');
 </script>
 </body>
 </html>
@@ -440,10 +741,8 @@ setMood("idle");
 def init_db():
     os.makedirs("data", exist_ok=True)
     os.makedirs("books", exist_ok=True)
-
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
-
     cur.execute("""
     CREATE TABLE IF NOT EXISTS conversations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -452,7 +751,6 @@ def init_db():
         created_at TEXT
     )
     """)
-
     cur.execute("""
     CREATE TABLE IF NOT EXISTS books (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -462,13 +760,10 @@ def init_db():
         created_at TEXT
     )
     """)
-
-    # Migration: adds chapter_number to DBs created by an older version
     try:
         cur.execute("ALTER TABLE books ADD COLUMN chapter_number INTEGER DEFAULT 1")
     except sqlite3.OperationalError:
-        pass  # column already exists
-
+        pass
     con.commit()
     con.close()
 
@@ -483,7 +778,6 @@ def save_chat(user_message, ai_reply):
     con.close()
 
 def get_recent_history(limit=HISTORY_TURNS):
-    """Return the last `limit` user/AI exchanges as chat-style messages, oldest first."""
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
     cur.execute(
@@ -492,8 +786,7 @@ def get_recent_history(limit=HISTORY_TURNS):
     )
     rows = cur.fetchall()
     con.close()
-
-    rows.reverse()  # oldest first
+    rows.reverse()
     messages = []
     for user_message, ai_reply in rows:
         messages.append({"role": "user", "content": user_message})
@@ -501,26 +794,16 @@ def get_recent_history(limit=HISTORY_TURNS):
     return messages
 
 def ask_ai_stream(message):
-    """Yield reply text incrementally as Ollama generates it."""
     history = get_recent_history()
-
     payload = {
         "model": MODEL,
         "stream": True,
         "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "You are My Destiny, a helpful AI desktop companion. You help with "
-                    "books, coding, research, work, notes, and creative projects. "
-                    "Use the conversation history to remember context and stay consistent."
-                )
-            },
+            {"role": "system", "content": "You are My Destiny, a helpful AI companion. Be conversational, warm, and helpful."},
             *history,
             {"role": "user", "content": message}
         ]
     }
-
     try:
         with requests.post(OLLAMA_URL, json=payload, stream=True, timeout=120) as r:
             r.raise_for_status()
@@ -536,51 +819,32 @@ def ask_ai_stream(message):
                     yield chunk
                 if data.get("done"):
                     break
-    except requests.exceptions.ConnectionError:
-        yield "AI error. Make sure Ollama is running with: ollama serve"
-    except requests.exceptions.Timeout:
-        yield "AI error. The request timed out - try a shorter message."
     except Exception as e:
-        yield f"AI error: {e}"
+        yield f"I'm having trouble connecting. Make sure Ollama is running."
 
 def ask_ai(message):
     history = get_recent_history()
-
     payload = {
         "model": MODEL,
         "stream": False,
         "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "You are My Destiny, a helpful AI desktop companion. You help with "
-                    "books, coding, research, work, notes, and creative projects. "
-                    "Use the conversation history to remember context and stay consistent."
-                )
-            },
+            {"role": "system", "content": "You are My Destiny, a helpful AI companion. Be conversational, warm, and helpful."},
             *history,
             {"role": "user", "content": message}
         ]
     }
-
     try:
         r = requests.post(OLLAMA_URL, json=payload, timeout=120)
         r.raise_for_status()
         data = r.json()
-        return data.get("message", {}).get("content", "I could not answer.")
-    except requests.exceptions.ConnectionError:
-        return "AI error. Make sure Ollama is running with: ollama serve"
-    except requests.exceptions.Timeout:
-        return "AI error. The request timed out — try a shorter message."
+        return data.get("message", {}).get("content", "I'm not sure how to respond.")
     except Exception as e:
-        return f"AI error: {e}"
+        return "Connection issue. Is Ollama running?"
 
 def safe_filename(title):
-    """Turn a user-supplied title into a safe filename component."""
-    title = (title or "Untitled_Book").strip() or "Untitled_Book"
+    title = (title or "Untitled").strip() or "Untitled"
     cleaned = re.sub(r"[^A-Za-z0-9_-]+", "_", title)
-    cleaned = cleaned.strip("._") or "Untitled_Book"
-    return cleaned[:100]
+    return (cleaned.strip("._") or "Untitled")[:100]
 
 @app.route("/")
 def home():
@@ -591,7 +855,7 @@ def api_chat():
     body = request.get_json(silent=True) or {}
     message = (body.get("message") or "").strip()
     if not message:
-        return jsonify({"reply": "Please enter a message."}), 400
+        return jsonify({"reply": "Please say something!"}), 400
     reply = ask_ai(message)
     save_chat(message, reply)
     return jsonify({"reply": reply})
@@ -601,15 +865,13 @@ def api_chat_stream():
     body = request.get_json(silent=True) or {}
     message = (body.get("message") or "").strip()
     if not message:
-        return jsonify({"reply": "Please enter a message."}), 400
-
+        return jsonify({"reply": "Please say something!"}), 400
     def generate():
         full_reply = []
         for chunk in ask_ai_stream(message):
             full_reply.append(chunk)
             yield chunk
         save_chat(message, "".join(full_reply))
-
     return Response(stream_with_context(generate()), mimetype="text/plain")
 
 @app.route("/api/memory")
@@ -619,8 +881,7 @@ def api_memory():
     cur.execute("SELECT user_message, ai_reply FROM conversations ORDER BY id DESC LIMIT 10")
     rows = cur.fetchall()
     con.close()
-
-    memory = [f"You: {u}\nMy Destiny: {a}" for u, a in rows]
+    memory = [f"You: {u}\\n\\nMe: {a}" for u, a in rows]
     return jsonify({"memory": memory})
 
 @app.route("/api/memory/clear", methods=["POST"])
@@ -630,32 +891,26 @@ def api_memory_clear():
     cur.execute("DELETE FROM conversations")
     con.commit()
     con.close()
-    return jsonify({"status": "Memory cleared."})
+    return jsonify({"status": "Cleared"})
 
 @app.route("/api/book/save", methods=["POST"])
 def api_book_save():
     body = request.get_json(silent=True) or {}
-    title = (body.get("title") or "Untitled Book").strip() or "Untitled Book"
+    title = (body.get("title") or "Untitled").strip() or "Untitled"
     chapter = body.get("chapter") or ""
-
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
     cur.execute("SELECT COALESCE(MAX(chapter_number), 0) FROM books WHERE title = ?", (title,))
     chapter_number = cur.fetchone()[0] + 1
-
     cur.execute(
         "INSERT INTO books (title, chapter, chapter_number, created_at) VALUES (?, ?, ?, ?)",
         (title, chapter, chapter_number, datetime.datetime.now().isoformat())
     )
     con.commit()
     con.close()
-
-    safe_title = safe_filename(title)
-    with open(f"books/{safe_title}.txt", "a", encoding="utf-8") as f:
-        f.write(f"\n\n--- Chapter {chapter_number} ---\n")
-        f.write(chapter)
-
-    return jsonify({"status": "Chapter saved.", "chapter_number": chapter_number, "title": title})
+    with open(f"books/{safe_filename(title)}.txt", "a", encoding="utf-8") as f:
+        f.write(f"\\n\\n--- Chapter {chapter_number} ---\\n{chapter}")
+    return jsonify({"status": "Saved", "chapter_number": chapter_number})
 
 @app.route("/api/book/list")
 def api_book_list():
@@ -663,13 +918,10 @@ def api_book_list():
     cur = con.cursor()
     cur.execute("""
         SELECT title, COUNT(*) as chapters, MAX(created_at) as updated
-        FROM books
-        GROUP BY title
-        ORDER BY updated DESC
+        FROM books GROUP BY title ORDER BY updated DESC
     """)
     rows = cur.fetchall()
     con.close()
-
     books = [{"title": t, "chapters": c, "updated": u} for t, c, u in rows]
     return jsonify({"books": books})
 
@@ -678,7 +930,6 @@ def api_book_load():
     title = request.args.get("title", "").strip()
     if not title:
         return jsonify({"title": "", "chapters": []})
-
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
     cur.execute(
@@ -687,7 +938,6 @@ def api_book_load():
     )
     rows = cur.fetchall()
     con.close()
-
     chapters = [{"chapter_number": n, "text": t} for t, n in rows]
     return jsonify({"title": title, "chapters": chapters})
 
@@ -695,8 +945,7 @@ def api_book_load():
 def api_book_export():
     title = request.args.get("title", "").strip()
     if not title:
-        return jsonify({"error": "No title given."}), 400
-
+        return jsonify({"error": "No title"}), 400
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
     cur.execute(
@@ -705,15 +954,12 @@ def api_book_export():
     )
     rows = cur.fetchall()
     con.close()
-
     if not rows:
-        return jsonify({"error": "No chapters found for that title."}), 404
-
-    parts = [f"{title}\n{'=' * len(title)}\n"]
+        return jsonify({"error": "No chapters"}), 404
+    parts = [f"{title}\\n{'=' * len(title)}\\n"]
     for chapter_text, chapter_number in rows:
-        parts.append(f"\n\n--- Chapter {chapter_number} ---\n\n{chapter_text}")
+        parts.append(f"\\n\\n--- Chapter {chapter_number} ---\\n\\n{chapter_text}")
     full_text = "".join(parts)
-
     filename = safe_filename(title) + ".txt"
     return Response(
         full_text,
@@ -736,13 +982,10 @@ source .venv/bin/activate
 echo "My Destiny Launcher"
 echo "==================="
 
-# Make sure Ollama is running before launching
 if ! curl -s --max-time 2 http://localhost:11434/api/tags >/dev/null 2>&1; then
   echo "Starting Ollama server..."
   nohup ollama serve > ollama.log 2>&1 &
   sleep 3
-  
-  # Verify it started
   if ! curl -s --max-time 2 http://localhost:11434/api/tags >/dev/null 2>&1; then
     echo "ERROR: Ollama failed to start. Check ollama.log"
     exit 1
@@ -750,12 +993,6 @@ if ! curl -s --max-time 2 http://localhost:11434/api/tags >/dev/null 2>&1; then
 fi
 
 echo "✓ Ollama ready"
-
-# Check if port 8080 is available
-if command -v lsof >/dev/null 2>&1 && lsof -i :8080 >/dev/null 2>&1; then
-  echo "WARNING: Port 8080 is already in use. App may fail to start." >&2
-fi
-
 echo ""
 echo "Launching My Destiny at http://localhost:8080"
 echo "Press Ctrl+C to stop."
